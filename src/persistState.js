@@ -14,6 +14,8 @@ import mergeState from './util/mergeState.js'
  * localStorage. Should transform the subset into a format that can be stored.
  * @param {Function} [config.deserialize=JSON.parse] (persistedData) => subset. Called directly after retrieving
  * persistedState from localStorage. Should transform the data into the format expected by your application
+ * @param {Function} [config.getter=window.localStorage.getItem] (key) => serializedData. Retrieves the data from storage
+ * @param {Function} [config.setter=window.localStorage.setItem] (key, serializedData) => boolean. Sets the data into storage.
  *
  * @return {Function} An enhanced store
  */
@@ -24,6 +26,8 @@ export default function persistState(paths, config) {
     slicer: createSlicer,
     serialize: JSON.stringify,
     deserialize: JSON.parse,
+    getter: window.localStorage.getItem,
+    setter: window.localStorage.setItem,
     ...config
   }
 
@@ -32,7 +36,9 @@ export default function persistState(paths, config) {
     merge,
     slicer,
     serialize,
-    deserialize
+    deserialize,
+    getter,
+    setter
   } = cfg
 
   return next => (reducer, initialState) => {
@@ -40,7 +46,7 @@ export default function persistState(paths, config) {
     let finalInitialState
 
     try {
-      persistedState = deserialize(localStorage.getItem(key))
+      persistedState = deserialize(getter(key))
       finalInitialState = merge(initialState, persistedState)
     } catch (e) {
       console.warn('Failed to retrieve initialize state from localStorage:', e)
@@ -54,7 +60,7 @@ export default function persistState(paths, config) {
       const subset = slicerFn(state)
 
       try {
-        localStorage.setItem(key, serialize(subset))
+        setter(key, serialize(subset))
       } catch (e) {
         console.warn('Unable to persist state to localStorage:', e)
       }
